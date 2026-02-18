@@ -1,0 +1,17 @@
+{
+    "name": "civicvoice",
+    "version": "1.0.0",
+    "description": "A civic issue reporting platform",
+    "private": true,
+    "scripts": {
+        "dev:client": "cd client && npm run dev",
+        "dev:server": "cd server && npm run dev",
+        "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+        "build:client": "cd client && npm run build",
+        "build:server": "cd server && npm run build",
+        "install:all": "cd client && npm install && cd ../server && npm install"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1"
+    }
+}
