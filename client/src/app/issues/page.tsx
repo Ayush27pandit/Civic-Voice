@@ -112,11 +112,10 @@ export default function IssuesListPage() {
                             <Link key={issue._id} href={`/issues/${issue._id}`} className="card group hover:border-primary transition-colors">
                                 <div className="relative mb-4 aspect-video overflow-hidden rounded-lg bg-muted">
                                     {issue.media?.[0] ? (
-                                        <Image
+                                        <img
                                             src={issue.media[0].url}
                                             alt={issue.title}
-                                            fill
-                                            className="object-cover group-hover:scale-105 transition-transform"
+                                            className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                                         />
                                     ) : (
                                         <div className="flex h-full items-center justify-center text-muted-foreground">No image</div>

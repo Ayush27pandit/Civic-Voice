@@ -18,6 +18,9 @@ build/
 .next/
 out/
 
+# Local uploads
+uploads/
+
 # Debug logs
 npm-debug.log*
 yarn-debug.log*

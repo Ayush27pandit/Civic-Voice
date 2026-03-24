@@ -222,7 +222,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
                                 <div className="mt-8 grid grid-cols-2 gap-4">
                                     {issue.media.map((m, i) => (
                                         <div key={i} className="relative aspect-video overflow-hidden rounded-xl bg-muted">
-                                            <Image src={m.url} alt="issue" fill className="object-cover" />
+                                            <img src={m.url} alt="issue" className="h-full w-full object-cover" />
                                         </div>
                                     ))}
                                 </div>
@@ -244,7 +244,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
                                 <div className="grid grid-cols-2 gap-4">
                                     {issue.resolution.proofMedia.map((m, i) => (
                                         <div key={i} className="relative aspect-video overflow-hidden rounded-xl">
-                                            <Image src={m.url} alt="proof" fill className="object-cover" />
+                                            <img src={m.url} alt="proof" className="h-full w-full object-cover" />
                                         </div>
                                     ))}
                                 </div>
@@ -290,7 +290,7 @@ export default function IssueDetailPage({ params }: { params: Promise<{ id: stri
                                         <div className="grid grid-cols-3 gap-2">
                                             {resProof.map((m, i) => (
                                                 <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
-                                                    <Image src={m.url} alt="proof" fill className="object-cover" />
+                                                    <img src={m.url} alt="proof" className="h-full w-full object-cover" />
                                                 </div>
                                             ))}
                                             <MediaUpload

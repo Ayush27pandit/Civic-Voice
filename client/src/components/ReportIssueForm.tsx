@@ -185,7 +185,7 @@ export default function ReportIssueForm() {
                     {media.map((m, i) => (
                         <div key={i} className="group relative aspect-square overflow-hidden rounded-lg bg-muted">
                             {m.type === "image" ? (
-                                <Image src={m.url} alt="upload" fill className="object-cover" />
+                                <img src={m.url} alt="upload" className="h-full w-full object-cover" />
                             ) : (
                                 <video src={m.url} className="h-full w-full object-cover" />
                             )}

@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
 import connectDB from "./config/database";
 import apiRoutes from "./routes";
+import uploadRoutes from "./routes/upload";
 import errorHandler from "./middleware/errorHandler";
 
 // Load environment variables
@@ -21,6 +23,8 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 // Request logging in development
 if (process.env.NODE_ENV === "development") {
     app.use((req, _res, next) => {
@@ -35,6 +39,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api", apiRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // ── 404 Handler ────────────────────────────────────
 app.use((_req, res) => {

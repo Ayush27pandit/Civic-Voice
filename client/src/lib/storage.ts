@@ -1,16 +1,10 @@
-import { supabase } from "./supabase";
-
-// ── Config ──────────────────────────────────────────
-const BUCKET_NAME = "media"; // create this bucket in Supabase dashboard
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/quicktime"];
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
-type ProgressCallback = (progress: number) => void;
-
-// ── Validation ──────────────────────────────────────
 function validateFile(file: File): void {
     const isImage = ALLOWED_IMAGE_TYPES.includes(file.type);
     const isVideo = ALLOWED_VIDEO_TYPES.includes(file.type);
@@ -30,101 +24,64 @@ function validateFile(file: File): void {
     }
 }
 
-/**
- * Upload a file to Supabase Storage bucket.
- *
- * @param file     - File to upload
- * @param path     - Storage path (e.g. "issues/123/photo.jpg")
- * @param onProgress - Optional progress callback (0-100).
- *                     Note: Supabase JS SDK doesn't natively stream progress,
- *                     so this fires once at 100 when the upload completes.
- * @returns Public URL of the uploaded file
- */
 export async function uploadFile(
     file: File,
-    path: string,
-    onProgress?: ProgressCallback
+    _path: string,
+    onProgress?: (progress: number) => void
 ): Promise<string> {
     validateFile(file);
 
-    const { error } = await supabase.storage
-        .from(BUCKET_NAME)
-        .upload(path, file, {
-            cacheControl: "3600",
-            upsert: true, // overwrite if same path exists
-            contentType: file.type,
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener("progress", (e) => {
+            if (e.lengthComputable && onProgress) {
+                onProgress(Math.round((e.loaded / e.total) * 100));
+            }
         });
 
-    if (error) {
-        throw new Error(`Upload failed: ${error.message}`);
-    }
+        xhr.addEventListener("load", () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    onProgress?.(100);
+                    const fullUrl = response.url.startsWith("http") 
+                        ? response.url 
+                        : `${API_URL.replace("/api", "")}${response.url}`;
+                    resolve(fullUrl);
+                } else {
+                    reject(new Error(response.error || "Upload failed"));
+                }
+            } else {
+                reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+        });
 
-    // Signal completion
-    onProgress?.(100);
+        xhr.addEventListener("error", () => {
+            reject(new Error("Upload failed"));
+        });
 
-    return getPublicUrl(path);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        xhr.open("POST", `${API_URL}/upload`);
+        xhr.send(formData);
+    });
 }
 
-/**
- * Get the public URL for a file in the Supabase bucket.
- */
-export function getPublicUrl(path: string): string {
-    const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
-    return data.publicUrl;
+export function getPublicUrl(filename: string): string {
+    return `${API_URL.replace("/api", "")}/uploads/${filename}`;
 }
 
-/**
- * Get a temporary signed URL (useful for private buckets).
- *
- * @param path      - Storage path
- * @param expiresIn - Seconds until expiry (default 1 hour)
- */
-export async function getSignedUrl(
-    path: string,
-    expiresIn = 3600
-): Promise<string> {
-    const { data, error } = await supabase.storage
-        .from(BUCKET_NAME)
-        .createSignedUrl(path, expiresIn);
+export async function deleteFile(url: string): Promise<void> {
+    const filename = url.split("/uploads/")[1];
+    if (!filename) return;
 
-    if (error || !data?.signedUrl) {
-        throw new Error(`Failed to create signed URL: ${error?.message}`);
+    const response = await fetch(`${API_URL}/upload/${filename}`, {
+        method: "DELETE",
+    });
+    
+    if (!response.ok) {
+        throw new Error("Delete failed");
     }
-
-    return data.signedUrl;
-}
-
-/**
- * Delete a file from the Supabase bucket.
- */
-export async function deleteFile(path: string): Promise<void> {
-    const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
-
-    if (error) {
-        throw new Error(`Delete failed: ${error.message}`);
-    }
-}
-
-/**
- * Delete multiple files from the Supabase bucket.
- */
-export async function deleteFiles(paths: string[]): Promise<void> {
-    const { error } = await supabase.storage.from(BUCKET_NAME).remove(paths);
-
-    if (error) {
-        throw new Error(`Bulk delete failed: ${error.message}`);
-    }
-}
-
-/**
- * List all files in a folder within the bucket.
- */
-export async function listFiles(folder: string) {
-    const { data, error } = await supabase.storage.from(BUCKET_NAME).list(folder);
-
-    if (error) {
-        throw new Error(`List failed: ${error.message}`);
-    }
-
-    return data;
 }

@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useApi } from "@/hooks/useApi";
 import Link from "next/link";
-import Image from "next/image";
 
 // Custom icon generator for categories
 const getCategoryIcon = (category: string, status: string) => {
@@ -65,36 +64,70 @@ interface Issue {
 }
 
 // Sub-component to center map on user location
-function RecenterMap({ position }: { position: [number, number] }) {
+function RecenterMap({ position }: { position: [number, number] | null }) {
     const map = useMap();
     useEffect(() => {
-        map.flyTo(position, 13);
+        if (position) {
+            map.flyTo(position, 13);
+        }
     }, [position, map]);
     return null;
 }
 
+// Locate button component
+function LocateButton({ onLocate, locating }: { onLocate: () => void; locating: boolean }) {
+    return (
+        <button
+            onClick={onLocate}
+            disabled={locating}
+            className="absolute bottom-6 right-6 z-[1000] flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background/90 shadow-lg backdrop-blur-md transition-all hover:bg-background active:scale-95 disabled:opacity-50"
+            title="Go to current location"
+        >
+            {locating ? (
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+            ) : (
+                <svg className="h-6 w-6 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            )}
+        </button>
+    );
+}
+
 export default function GlobalMap() {
     const [issues, setIssues] = useState<Issue[]>([]);
-    const [userLocation, setUserLocation] = useState<[number, number]>([28.6139, 77.209]); // Default to Delhi
+    const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+    const [locating, setLocating] = useState(false);
     const api = useApi();
 
+    const getCurrentLocation = () => {
+        if (!("geolocation" in navigator)) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+        setLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+                setLocating(false);
+            },
+            () => {
+                alert("Unable to retrieve your location");
+                setLocating(false);
+            }
+        );
+    };
+
     useEffect(() => {
-        // 1. Fetch Issues
         const fetchIssues = async () => {
             try {
-                const res = await api.get("/issues?limit=100"); // Get latest 100 issues
+                const res = await api.get("/issues?limit=100");
                 setIssues(res.data);
             } catch (error) {
                 console.error("Failed to fetch map issues:", error);
             }
         };
-
-        // 2. Get User Location
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                setUserLocation([pos.coords.latitude, pos.coords.longitude]);
-            });
-        }
 
         fetchIssues();
     }, []);
@@ -109,9 +142,9 @@ export default function GlobalMap() {
     };
 
     return (
-        <div className="h-full w-full">
+        <div className="relative h-full w-full">
             <MapContainer
-                center={userLocation}
+                center={userLocation || [28.6139, 77.209]}
                 zoom={13}
                 className="h-full w-full"
             >
@@ -120,14 +153,16 @@ export default function GlobalMap() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                <RecenterMap position={userLocation} />
+                <RecenterMap position={userLocation || [28.6139, 77.209]} />
 
                 {/* User's Location Marker */}
-                <Marker position={userLocation} icon={UserLocationIcon}>
-                    <Popup>
-                        <div className="text-center font-bold">You are here</div>
-                    </Popup>
-                </Marker>
+                {userLocation && (
+                    <Marker position={userLocation} icon={UserLocationIcon}>
+                        <Popup>
+                            <div className="text-center font-bold">You are here</div>
+                        </Popup>
+                    </Marker>
+                )}
 
                 {/* Issue Markers */}
                 {issues.map((issue) => (
@@ -140,11 +175,10 @@ export default function GlobalMap() {
                             <div className="w-48 space-y-2">
                                 {issue.media?.[0] && (
                                     <div className="relative aspect-video w-full overflow-hidden rounded-md">
-                                        <Image
+                                        <img
                                             src={issue.media[0].url}
                                             alt={issue.title}
-                                            fill
-                                            className="object-cover"
+                                            className="h-full w-full object-cover"
                                         />
                                     </div>
                                 )}
@@ -156,19 +190,22 @@ export default function GlobalMap() {
                                     <span
                                         className="h-2 w-2 rounded-full"
                                         style={{ backgroundColor: getStatusColor(issue.status) }}
-                                    />
-                                </div>
-                                <Link
-                                    href={`/issues/${issue._id}`}
-                                    className="block w-full rounded-md bg-primary py-1.5 text-center text-xs font-bold text-white hover:bg-primary-dark transition-colors"
-                                >
-                                    View Full Details
-                                </Link>
+                                />
                             </div>
-                        </Popup>
-                    </Marker>
-                ))}
+                            <Link
+                                href={`/issues/${issue._id}`}
+                                className="block w-full rounded-md bg-primary py-1.5 text-center text-xs font-bold text-white hover:bg-primary-dark transition-colors"
+                            >
+                                View Full Details
+                            </Link>
+                        </div>
+                    </Popup>
+                </Marker>
+            ))}
             </MapContainer>
+            
+            {/* Locate Button */}
+            <LocateButton onLocate={getCurrentLocation} locating={locating} />
         </div>
     );
 }
