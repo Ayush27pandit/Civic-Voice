@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+plan.md 
+implementation.md
+
 # Environment variables
 .env
 .env.local
